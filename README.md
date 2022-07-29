@@ -4,7 +4,7 @@ vasper_final_0_jun20
 
 The script 'vasper_final_0_jun20' is made in BASH.
 
-It is the general code that helped me to get my bachelor's degree in Physics. 
+It is the general code that helped me to get my bachelor's degree in Physics. https://riull.ull.es/xmlui/handle/915/29103
 
 I connected via ssh protocol to a server at my university and did the calculations remotely.
 
