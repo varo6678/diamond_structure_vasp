@@ -21,26 +21,11 @@ Each of them will be linked to their respective INCAR, POSCAR and KPOINTS files 
 
 When it is executed, after the calculation in the summary directory of each material you will find the outputs in flat data files and placed in two columns with header.
 
-The directory path:
-
-main
-  material
-    c
-      mcases 
-        case1
-          POSCAR
-          KPOINTS
-          INCAR
-        case2
-      POTCAR
-      temporal
-      summary
-      
-    si
-    ge
-    sn
-    lonsdaleiteC
-    lonsdaleiteSi
-    lonsdaleiteGe
-    lonsdaleiteSn
+The directory path, one example: 
+/main/vasper_final_0_jun20 # here is the script
+/main/material/c/mcases
+/main/material/c/mcases/case1
+/main/material/c/POTCAR
+/main/material/c/temporal
+/main/material/c/summary
     
