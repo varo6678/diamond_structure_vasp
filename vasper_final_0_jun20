@@ -1,0 +1,484 @@
+#! bin/bash
+
+# to import functions from another script
+#source main_functions
+#. main_functions
+
+date=`date`
+name='Alvaro Monforte Marin'
+
+
+# colors
+
+yellow="\033[1;33m"
+cyan="\033[0;36m"
+lightcyan="\033[1;36m"
+nc="\033[0m" # No Color
+ec="\e[0m"
+
+# other colors
+
+red='\e[31m0'
+
+
+introduction(){
+echo " "
+echo " "
+echo " ####################################"
+echo " # vasper_finally.sh script         #"
+echo -e " # Created by ${lightcyan}${name}${nc} #"
+echo " # starts at:                       #"
+echo -e " # ${cyan}${date}${nc}    #" 
+echo " ####################################"
+echo " "
+}
+
+vasp=vasp.5.3.5o2
+
+# key_variables
+e='energy'
+cf='ENCUT'
+a='a_parameter'
+v='volume'
+p='pressure'
+kpoints='KPOINTS'
+# units
+ue='eV'
+ua='Angstrom'
+uv='Angstrom³'
+up='kbar'
+uk=''
+
+########################################################################################################################
+case_energy_vs_encut(){
+echo " "
+echo -e "# to represent: ${yellow}${e}${nc} [${yellow}${ue}${nc}] vs ${yellow}${cf}${nc} [${yellow}${ue}${nc}]"
+echo " "
+
+echo ${cf} ${e} >> summary_e_vs_cf_0
+
+for i in $(seq 300 10 600)
+do
+sed -i "s/${cf}=.*/${cf}=${i}/g" ./INCAR
+
+echo " "
+echo " " 
+echo -e "# ${yellow}${cf}${nc} = ${i}                                                   "
+echo " "
+${vasp}
+# grep actuation
+E=`grep "free energy" OUTCAR | tail -1 | cut -d '=' -f 2- | cut -f 1 -d 'e'`
+echo ${i} ${E}>>summary_e_vs_cf_0
+rm WAVECAR
+done
+
+awk '(NR==1)' summary_e_vs_cf_0 >> summary_e_vs_cf_${1}
+awk '(NR>1){printf("%d %3.5f\n",$1,$2);}' summary_e_vs_cf_0 >> summary_e_vs_cf_${1}
+rm summary_e_vs_cf_0
+
+#OUTPUT:
+mv summary_e_vs_cf_${1} ../summary
+echo " "
+echo " "
+}
+
+################################################### CONSTRUCTION ##########################################################
+case_energy_vs_v(){
+# inputs of the function
+
+echo " "
+echo -e "# to represent: ${yellow}${e}${nc} [${yellow}${ue}${nc}] vs ${yellow}${v}${nc} [${yellow}${uv}${nc}]"
+echo " "
+echo ${v} ${e}>>summary_e_vs_v_0
+
+###########################################################################################################################
+# UNDER CONSTRUCTION
+
+# we want to find the volumen value to treat in POSCAR file
+# and we entablish a delta for the range of values in the sequence
+
+# aprox 25C
+
+vc=-45.64129120
+vsi=-163.55317139
+vge=-191.38798044
+vsn=-293.58478770
+vlonsdaleiteC=-22.870
+vlonsdaleiteSi=-81.73
+vlonsdaleiteGe=-94.94
+vlonsdaleiteSn=-103.87
+
+# aprox -273.C
+
+vc_0=-11.410
+vsi_0=-40.888
+vge_0=-47.847
+vsn_0=-73.396
+vlonsdaleiteC_0=-22.870
+vlonsdaleiteSi_0=-81.73
+vlonsdaleiteGe_0=-94.94
+vlonsdaleiteSn_0=-146.79
+
+if [ "${1}" = 'c' ]
+then
+sed -i "2c\ ${vc_0}" ./POSCAR
+elif [ "${1}" = 'si' ]
+then
+sed -i "2c\ ${vsi_0}" ./POSCAR
+elif [ "${1}" = 'ge' ]
+then
+sed -i "2c\ ${vge_0}" ./POSCAR
+elif [ "${1}" = 'sn' ]
+then
+sed -i "2c\ ${vsn_0}" ./POSCAR
+elif [ "${1}" = 'lonsdaleiteC' ]
+then
+sed -i "2c\ ${vlonsdaleiteC_0}" ./POSCAR
+elif [ "${1}" = 'lonsdaleiteSi' ]
+then
+sed -i "2c\ ${vlonsdaleiteSi_0}" ./POSCAR
+elif [ "${1}" = 'lonsdaleiteGe' ]
+then
+sed -i "2c\ ${vlonsdaleiteGe_0}" ./POSCAR
+elif [ "${1}" = 'lonsdaleiteSn' ]
+then
+sed -i "2c\ ${vlonsdaleiteSn_0}" ./POSCAR
+fi
+
+value=`sed -n '2p' ./POSCAR`
+delta=3
+
+# we fit the limts of the sequence
+
+max_value=$(echo "scale=4; "$value"+"$delta| bc -l)
+min_value=$(echo "scale=4; "$value"-"$delta| bc -l)
+
+for i in $(seq $min_value 0.5 $max_value)
+do
+sed -i "2c\ ${i}" ./POSCAR
+
+echo " "
+echo " " 
+echo -e  "# ${yellow}${v}${nc} = ${i}"
+echo " "
+$vasp
+
+# grep actuation
+E=`grep "free energy" OUTCAR | tail -1 | cut -d '=' -f 2- | cut -f 1 -d 'e'`
+echo ${i} ${E}>>summary_e_vs_v_0
+rm WAVECAR
+done
+
+awk '(NR==1)' summary_e_vs_v_0 >> summary_e_vs_v_${1}
+awk '(NR>1){printf("%2.2f %2.6f\n",$1,$2);}' summary_e_vs_v_0 >> summary_e_vs_v_${1}
+rm summary_evsv_0
+
+
+#OUTPUT:
+printTable " " "$(cat summary_e_vs_v_${1})" "true" "true"
+mv summary_e_vs_v_${1} ../summary
+echo " "
+echo " "
+}
+
+################################################### CONSTRUCTION ################################################################
+
+case_energy_vs_kpoints(){
+# inputs of the function
+# name of the material
+material=$1
+
+echo " "
+echo -e "# to represent: ${yellow}${e}${nc} [${yellow}${ue}${nc}] vs ${yellow}${kpoints}${nc} [${yellow}${uk}${nc}]"
+echo " "
+echo ${kpoints} ${e}>>summary_e_vs_kpoints_0
+
+for i in $(seq 3 1 8) ; do
+if [[ "${1}" = 'lonsdaleiteC' || "${1}" = 'lonsdaleiteSi' || "${1}" = 'lonsdaleiteGe' || "${1}" = 'lonsdaleiteSn' ]]
+then
+sed -i "4c\ $((2*${i})) $((2*${i})) $i" ./KPOINTS
+else
+sed -i "4c\ $i $i $i" ./KPOINTS
+fi
+
+echo " "
+echo " " 
+echo -e "# ${yellow}${kpoints}${nc} = ${i}"
+echo " "
+$vasp
+
+# grep actuation
+E=`grep "free energy" OUTCAR | tail -1 | cut -d '=' -f 2- | cut -f 1 -d 'e'`
+echo $i $E>>summary_e_vs_kpoints_0
+rm WAVECAR
+done
+
+awk '(NR==1)' summary_e_vs_kpoints_0 >> summary_e_vs_kpoints_${1}
+awk '(NR>1){printf("%d %3.5f\n",$1,$2);}' summary_e_vs_kpoints_0 >> summary_e_vs_kpoints_${1}
+rm summary_e_vs_kpoints_0
+
+
+#OUTPUT:
+mv summary_e_vs_kpoints_${1} ../summary
+
+echo " "
+echo " "
+}
+
+###########################################################################################################################
+
+case_dos(){
+case='dos'
+echo " "
+echo -e " Working in DoS for ${yellow}${name}${nc}"
+echo " "
+
+# fix INCAR
+# performing a static calculation:
+sed -i "s/ISMEAR=.*/ISMEAR=-5/g" ./INCAR
+echo "LORBIT=11" >> ./INCAR
+echo "NSW=0" >> ./INCAR
+echo "IBRION=-1" >> ./INCAR
+$vasp
+rm CHG CONTCAR EIGENVAL OSZICAR PCDAT WAVECAR DOSCAR IBZKPT OUTCAR vasprun.xml XDATCAR
+# taking into account CHGAR from previous run
+# eliminate both lines of the static step
+sed -i '$d' ./INCAR
+sed -i '$d' ./INCAR
+# suspectchoso "ISMEAR=-5"
+echo "ICHARG=11" >> ./INCAR
+$vasp
+sed -i '$d' ./INCAR
+sed -i '$d' ./INCAR
+sed -i '$d' ./INCAR
+
+#OUTPUT:
+mv EIGENVAL eigenval_$1_$case
+mv DOSCAR doscar_$1_$case
+mv vasprun.xml vasprun_$1_$case.xml
+mv OUTCAR outcar_$1_$case
+
+cp ./eigenval_$1_$case ../summary
+cp ./doscar_$1_$case ../summary
+cp ./vasprun_$1_$case.xml ../summary
+cp ./outcar_$1_$case ../summary
+
+rm vasprun_$1_$case.xml
+rm doscar_$1_$case
+rm eigenval_$1_$case
+rm outcar_$1_$case
+
+
+echo " "
+echo -e " stop Working in DoS for ${yellow}${name}${nc}"
+echo " "
+
+}
+
+case_bands(){
+case='bands'
+echo " "
+echo -e " Working in bands for ${yellow}${name}${nc}"
+echo " "
+# performing a static calculation:
+# modified 02262022
+echo "LORBIT=11" >> ./INCAR
+echo "NSW=0" >> ./INCAR
+echo "IBRION=-1" >> ./INCAR
+$vasp
+rm CHG CONTCAR EIGENVAL OSZICAR PCDAT WAVECAR DOSCAR IBZKPT OUTCAR vasprun.xml XDATCAR
+rm INCAR POSCAR KPOINTS
+mv INCAR_bands INCAR
+mv POSCAR_bands POSCAR
+mv KPOINTS_bands KPOINTS
+$vasp
+sed -i '$d' ./INCAR
+sed -i '$d' ./INCAR
+sed -i '$d' ./INCAR
+
+#OUTPUT:
+
+mv EIGENVAL eigenval_$1_$case
+mv DOSCAR doscar_$1_$case
+mv vasprun.xml vasprun_$1_$case.xml
+mv OUTCAR outcar_$1_$case.xml
+
+cp ./eigenval_$1_$case ../summary
+cp ./doscar_$1_$case ../summary
+cp ./vasprun_$1_$case.xml ../summary
+cp ./outcar_$1_$case ../summary
+
+rm vasprun_$1_$case.xml
+rm doscar_$1_$case
+rm eigenval_$1_$case
+rm outcar_$1_$case
+
+echo " "
+echo -e " stop Working in bands for ${yellow}${name}${nc}"
+echo " "
+
+}
+
+##############################################################################
+
+entablish_temporal(){
+#material=$1
+for i in 1 2
+# case 1: first cases
+# case 2: dos & bands
+do
+site_3files="./material/$1/mcases/case$i/*"
+site_potcar="./material/$1/POTCAR"
+temporal="./material/$1/temporal"
+cp $site_3files $temporal
+cp $site_potcar $temporal
+done
+}
+
+cleaner(){
+rm ./*
+}
+
+setup_best(){
+# take the best values for ENCUT, kpoints, ....
+encutsetup=520
+kpointssetup=12
+kpointssetup_l=6
+ac=3.57371
+asi=5.468728
+age=5.762862
+asn=6.64626800
+alonsdaleiteC=1.0
+alonsdaleiteSi=1.0
+alonsdaleiteGe=1.0
+alonsdaleiteSn=1.0
+#a=b
+#clonsdaleiteC=4.18140200
+
+vc=-45.64129120
+vsi=-163.55317139
+vge=-191.38798044
+vsn=-293.58478770
+vlonsdaleiteC=-22.870
+vlonsdaleiteSi=-81.73
+vlonsdaleiteGe=-94.94
+vlonsdaleiteSn=-103.84
+
+sed -i "s/ENCUT=.*/ENCUT=${encutsetup}/g" ./INCAR                              
+
+
+if [[ "${1}" = 'lonsdaleiteC' || "${1}" = 'lonsdaleiteSi' || "${1}" = 'lonsdaleiteGe' || "${1}" = 'lonsdaleiteSn' ]]
+then
+sed -i "4c\ 11 11 5" ./KPOINTS
+else
+sed -i "4c\ ${kpointssetup} ${kpointssetup} ${kpointssetup}" ./KPOINTS
+fi
+
+if [ "${1}" = 'c' ]
+then
+sed -i "2c\ ${ac}" ./POSCAR                                                      
+elif [ "${1}" = 'si' ]
+then
+sed -i "2c\ ${asi}" ./POSCAR                                                      
+elif [ "${1}" = 'ge' ]
+then
+sed -i "2c\ ${age}" ./POSCAR                                                     
+elif [ "${1}" = 'sn' ]
+then
+sed -i "2c\ ${asn}" ./POSCAR
+elif [ "${1}" = 'lonsdaleiteC' ]
+then
+sed -i "2c\ ${alonsdaleiteSi}" ./POSCAR
+elif [ "${1}" = 'lonsdaleiteSi' ]
+then
+sed -i "2c\ ${alonsdaleiteSi}" ./POSCAR
+elif [ "${1}" = 'lonsdaleiteGe' ]
+then
+sed -i "2c\ ${alonsdaleiteGe}" ./POSCAR
+elif [ "${1}" = 'lonsdaleiteSn' ]
+then
+sed -i "2c\ ${alonsdaleiteSn}" ./POSCAR
+fi
+}
+
+see_results(){
+printTable " " "$(cat summary_e_vs_v_${1})" "true" "true"
+printTable " " "$(cat summary_e_vs_cf_${1})" "true" "true"
+printTable " " "$(cat summary_e_vs_kpoints_${1})" "true" "true"
+}
+
+
+loop_allmaterial(){
+
+#for h in 'lonsdaleiteC' 'lonsdaleiteSi' 'lonsdaleiteGe' 'lonsdaleiteSn'
+#do
+#name=$h
+
+material_path="./material/lonsdaleiteSi"
+#for h in $material_path
+#do
+#name=`basename $h`
+name='lonsdaleiteSi'
+
+############### case1 ####################
+#echo -e "material: ${yellow}${name}${nc}"
+#entablish_temporal $name
+#cd ./material/$name/temporal
+#setup_best $name
+#case_energy_vs_encut $name
+#cleaner
+#cd ../../..
+
+############## case2 #####################
+#echo -e "material: ${yellow}$name${nc}"
+#entablish_temporal $name
+#cd ./material/$name/temporal
+#setup_best $name
+#case_energy_vs_v $name
+#cleaner
+#cd ../../..
+ 
+############## case3 ####################
+#echo -e "material: ${yellow}$name${nc}"
+#entablish_temporal $name
+#cd ./material/$name/temporal
+#setup_best $name
+#case_energy_vs_kpoints $name
+#cleaner
+#cd ../../..
+
+############### case_dos ##############
+echo -e "material: ${yellow}$name${nc}"
+entablish_temporal $name
+cd ./material/$name/temporal
+setup_best $name
+case_dos $name
+cleaner
+cd ../../..
+
+######### case_bands ####################
+echo -e "material: ${yellow}$name${nc}"
+entablish_temporal $name
+cd ./material/$name/temporal
+setup_best $name
+case_bands $name 
+cleaner
+cd ../../..
+
+# see results
+#cd ./material/$name/summary
+#see_results $name
+#cd ../../..
+
+#done
+}
+
+
+#############################################################################
+
+#######################
+# main program
+introduction
+loop_allmaterial
+#see_results
+#######################
